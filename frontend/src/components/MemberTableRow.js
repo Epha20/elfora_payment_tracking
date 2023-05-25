@@ -4,13 +4,11 @@ import axios from "axios";
 import Button from "react-bootstrap/Button";
 
 
-
 export default class MemberTableRow extends Component {
   constructor(props) {
     super(props);
     this.deleteStudent = this.deleteStudent.bind(this);
   }  
-  
 
   deleteStudent() {
     axios
@@ -59,8 +57,7 @@ export default class MemberTableRow extends Component {
             className="edit-link"
             path={"product/:id"}
             to={"/edit-student/" + this.props.student._id}
-            style={{ textDecoration: 'none' }}
-            
+            style={{ textDecoration: 'none' }} 
           >
             Edit
           </Link>
@@ -79,8 +76,6 @@ export default class MemberTableRow extends Component {
           </Button>
         </td>
       </tr>
-      
     );
-    
   }
 }

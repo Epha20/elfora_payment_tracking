@@ -1,131 +1,203 @@
-import React, {  useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
+import JsPDF from "jspdf";
+import "jspdf-autotable";
 import axios from "axios";
 import Table from "react-bootstrap/Table";
 import MemberTableRow from "./MemberTableRow";
 import Form from "react-bootstrap/Form";
-import JsPDF from "jspdf";
+import { BrowserRouter as Router } from "react-router-dom";
+import ReactPaginate from "react-paginate";
+import Button from "react-bootstrap/esm/Button";
 
 
-import { renderToString } from 'react-dom/server';
-
-
-
-
-
-const BASE_URL = "http://localhost:4000"
-
+const BASE_URL = "http://localhost:4000";
 
 export const StudentList = () => {
-  const [students, setStudents] = useState([])
-const [filteredData] = useState(students);
- 
-const print = () => {
-  const string = renderToString();
-  const pdf = new JsPDF();
-  pdf.fromHTML(string);
-  pdf.save('report');
-}
+  const [students, setStudents] = useState([]);
+  const [filteredStudents, setFilteredStudents] = useState([]);
+  const [searchValue, setSearchValue] = useState("");
+  const [sortColumn, setSortColumn] = useState("");
+  const [sortDirection, setSortDirection] = useState("");
+  const [currentPage, setCurrentPage] = useState(0);
+  const [chequeNumberSearchValue] = useState("");
 
-  const handleSearch = (event) =>{
+  const pageSize = 5; // Number of items per page
+
+  const handlePageChange = ({ selected }) => {
+    setCurrentPage(selected);
+  };
+
+  const handleSearch = (event) => {
+    const value = event.target.value.toLowerCase();
+    setSearchValue(value);
+    filterAndSortStudents(value, sortColumn, sortDirection, chequeNumberSearchValue);
+  };
+
   
+  
+  const handleSort = (column) => {
+    if (column === sortColumn) {
+      setSortDirection((prevDirection) => (prevDirection === "asc" ? "desc" : "asc"));
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+    filterAndSortStudents(searchValue, column, sortDirection);
+  };
 
-    let value = event.target.value.toLowerCase();
-    let result = [];
-    console.log(value);
-    result = students.filter((data) => {
-    return data.name.search(value) !== -1;
+  const filterAndSortStudents = (search, column, direction, chequeNumber) => {
+    const filtered = students.filter(
+      (student) =>
+        (student.name.toLowerCase().includes(search) || student.age.toString().includes(search)) &&
+        (chequeNumber === "" || student.age === parseInt(chequeNumber))
+    );
+    const sorted = filtered.sort((a, b) => {
+      if (direction === "asc") {
+        return a[column] > b[column] ? 1 : -1;
+      } else {
+        return b[column] > a[column] ? 1 : -1;
+      }
     });
-    setStudents(result);
-  }
-
-
+    setFilteredStudents(sorted);
+    setCurrentPage(0);
+  };
   
- 
+  
+
+  const print = () => {
+    const doc = new JsPDF();
+    const tableHeaders = [
+      "Payment/Transfer to",
+      "Cheque Number",
+      "Cheque Amount",
+      "Date",
+      "Bank",
+    ];
+  
+    const filteredStudents = students.filter((student) =>
+   
+      student.name.toLowerCase().includes(searchValue)
+    );
+  
+    const sortedStudents = filteredStudents.sort((a, b) => {
+      if (sortDirection === "asc") {
+        return a[sortColumn] - b[sortColumn];
+      } else {
+        return b[sortColumn] - a[sortColumn];
+      }
+    });
+  
+    function formatDate(dateStr) {
+      const date = new Date(dateStr);
+      const options = {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      };
+      const formattedDate = date.toLocaleDateString("en-US", options);
+      console.log(formattedDate); // Output: "Saturday, March 25, 2023"
+    
+      return formattedDate;
+    }
+    
+    const tableData = sortedStudents.map((student) => [
+      student.name,
+      student.age,
+      student.mobile.toLocaleString(),
+      formatDate(student.date), // Call formatDate with student.date as an argument
+      student.duration,
+    ]);
+    doc.setFontSize(18); // Set font size for the title
+doc.text("Cheque Payment Report", 10, 10);
+    doc.autoTable({
+      head: [tableHeaders],
+      body: tableData,
+    });
+    
+    doc.save("report.pdf");
+  }    
 
   useEffect(() => {
     axios
       .get(`${BASE_URL}/students/`)
-      .then((__respond) => {
-        if (__respond.data.length > students.length) {
-          setStudents(__respond.data)
-        }
-
-     
-        
-        
+      .then((response) => {
+        setStudents(response.data);
+        setFilteredStudents(response.data); // Initialize filteredStudents with all students
       })
       .catch((error) => {
         console.error(error);
       });
-  }, [])
+  }, []);
 
-  setInterval(() => {
-    if (students.length > 0) {
-      axios
-      .get(`${BASE_URL}/students/`)
-      .then((__response) => {
-          if (__response.data.length > students.length) {
-            setStudents(__response.data)
-          }
-        })
-        .catch((error) => {
-          console.error(error);
-        });
-    }
-  }, 5000)
- 
   return (
-    
-    <div>
-      
-       <div class="d-flex justify-content-end">
-  <button class="btn btn-primary" type="button" onClick={print}>
-    Generate Report
-  </button></div><br />
-      <Form className="d-flex">
-
-
+    <Router>
+      <div>
+        <Button onClick={print}>Generate Report</Button>
+        <br />
+        <br />
+        <Form className="d-flex">
           <Form.Control
             type="search"
-            placeholder="Search"
+            placeholder="Search by Company Name"
             className="me-2"
-            aria-label="Search"
-            //value= {filteredData}
-            onChange= {handleSearch}  spellcheck="false"
+            aria-label="Search by Company Name"
+            onChange={handleSearch}
+            spellCheck={false}
           />
-         
+          
         </Form>
-        
-        
-        
-       
-
-
         <br />
-        <div id="rot">
+        <br />
         <Table striped bordered hover size="sm" id="pdf">
           <thead>
             <tr>
-              <th>Payment/Transfer to</th>
-              <th>Cheque Number</th>
-              <th>Cheque Amount</th>
-              <th>Date</th>
-              <th>Bank</th>
-            <th>Edit / Delete</th>
+              <th onClick={() => handleSort("name")}>
+                Payment/Transfer to
+                {sortColumn === "name" && <span>{sortDirection === "asc" ? "▲" : "▼"}</span>}
+              </th>
+              <th onClick={() => handleSort("chequeNumber")}>
+                Cheque Number
+                {sortColumn === "chequeNumber" && <span>{sortDirection === "asc" ? "▲" : "▼"}</span>}
+              </th>
+              <th onClick={() => handleSort("chequeAmount")}>
+                Cheque Amount
+                {sortColumn === "chequeAmount" && <span>{sortDirection === "asc" ? "▲" : "▼"}</span>}
+              </th>
+              <th onClick={() => handleSort("date")}>
+                Date
+                {sortColumn === "date" && <span>{sortDirection === "asc" ? "▲" : "▼"}</span>}
+              </th>
+              <th onClick={() => handleSort("bank")}>
+                Bank
+                {sortColumn === "bank" && <span>{sortDirection === "asc" ? "▲" : "▼"}</span>}
+              </th>
+              <th>Edit / Delete</th>
             </tr>
           </thead>
-          <tbody >
-            {students.reverse().map((student, _index) => <MemberTableRow student={student} key={_index} />)}
-          </tbody>
           <tbody>
-            {filteredData.map((value, index) => <MemberTableRow value={value} key={index} />)}
+            {filteredStudents
+              .slice(currentPage * pageSize, (currentPage + 1) * pageSize)
+              .map((student, index) => (
+                <MemberTableRow student={student} key={index} />
+              ))}
           </tbody>
+          
         </Table>
-        </div>
-     
-        <br />
-        <br /> 
+        
+        <ReactPaginate
+          previousLabel={"Prev"}
+          nextLabel={"Next"}
+          breakLabel={"..."}
+          breakClassName={"break-me"}
+          pageCount={Math.ceil(filteredStudents.length / pageSize)}
+          marginPagesDisplayed={2}
+          pageRangeDisplayed={5}
+          onPageChange={handlePageChange}
+          containerClassName={"pagination"}
+          activeClassName={"active"}
+        />
       </div>
-      
+    </Router>
   );
-  }
+};

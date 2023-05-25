@@ -55,7 +55,7 @@ class App extends Component {
 
           <Container>
             <Row>
-              <Col md={12}>
+              <Col md={15}>
                 <div className="wrapper">
                   <Switch>
                     <Route
@@ -75,7 +75,7 @@ class App extends Component {
                     />
                     <Route
                       exact
-                      path="/member-list"
+                      path="/payment-list"
                       component={(props) => <StudentList {...props} />}
                     />
                   </Switch>
