@@ -9,17 +9,12 @@ import { BrowserRouter as Router } from "react-router-dom";
 import ReactPaginate from "react-paginate";
 import Button from "react-bootstrap/esm/Button";
 
-
 const BASE_URL = "http://localhost:4000";
 
 export const StudentList = () => {
   const [students, setStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
-  const [searchValue, setSearchValue] = useState("");
-  const [sortColumn, setSortColumn] = useState("");
-  const [sortDirection, setSortDirection] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
-  const [chequeNumberSearchValue] = useState("");
 
   const pageSize = 5; // Number of items per page
 
@@ -29,38 +24,24 @@ export const StudentList = () => {
 
   const handleSearch = (event) => {
     const value = event.target.value.toLowerCase();
-    setSearchValue(value);
-    filterAndSortStudents(value, sortColumn, sortDirection, chequeNumberSearchValue);
+    filterStudents(value);
   };
 
-  
-  
-  const handleSort = (column) => {
-    if (column === sortColumn) {
-      setSortDirection((prevDirection) => (prevDirection === "asc" ? "desc" : "asc"));
+  const filterStudents = (search) => {
+    if (search.trim() === "") {
+      setFilteredStudents(students);
     } else {
-      setSortColumn(column);
-      setSortDirection("asc");
+      const filtered = students.filter(
+        (student) =>
+          student.name.toLowerCase().includes(search) ||
+          student.age.toString().includes(search)
+      );
+      setFilteredStudents(filtered);
     }
-    filterAndSortStudents(searchValue, column, sortDirection);
-  };
-
-  const filterAndSortStudents = (search, column, direction, chequeNumber) => {
-    const filtered = students.filter(
-      (student) =>
-        (student.name.toLowerCase().includes(search) || student.age.toString().includes(search)) &&
-        (chequeNumber === "" || student.age === parseInt(chequeNumber))
-    );
-    const sorted = filtered.sort((a, b) => {
-      if (direction === "asc") {
-        return a[column] > b[column] ? 1 : -1;
-      } else {
-        return b[column] > a[column] ? 1 : -1;
-      }
-    });
-    setFilteredStudents(sorted);
     setCurrentPage(0);
   };
+  
+  
   
   
 
@@ -73,50 +54,64 @@ export const StudentList = () => {
       "Date",
       "Bank",
     ];
-  
-    const filteredStudents = students.filter((student) =>
-   
-      student.name.toLowerCase().includes(searchValue)
-    );
-  
-    const sortedStudents = filteredStudents.sort((a, b) => {
-      if (sortDirection === "asc") {
-        return a[sortColumn] - b[sortColumn];
-      } else {
-        return b[sortColumn] - a[sortColumn];
-      }
-    });
-  
-    function formatDate(dateStr) {
-      const date = new Date(dateStr);
-      const options = {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      };
-      const formattedDate = date.toLocaleDateString("en-US", options);
-      console.log(formattedDate); // Output: "Saturday, March 25, 2023"
-    
-      return formattedDate;
-    }
-    
-    const tableData = sortedStudents.map((student) => [
+
+    const tableData = filteredStudents.map((student) => [
       student.name,
       student.age,
       student.mobile.toLocaleString(),
       formatDate(student.date), // Call formatDate with student.date as an argument
       student.duration,
     ]);
+
     doc.setFontSize(18); // Set font size for the title
-doc.text("Cheque Payment Report", 10, 10);
+    doc.text("Cheque Payment Report", 10, 10);
     doc.autoTable({
       head: [tableHeaders],
       body: tableData,
     });
-    
+
     doc.save("report.pdf");
-  }    
+  };
+
+  function formatDate(dateStr) {
+    const date = new Date(dateStr);
+    const options = {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    };
+    const formattedDate = date.toLocaleDateString("en-US", options);
+    console.log(formattedDate); // Output: "Saturday, March 25, 2023"
+
+    return formattedDate;
+  }
+
+  const renderTableData = () => {
+  const startIndex = currentPage * pageSize;
+  const endIndex = startIndex + pageSize;
+  const reversedData = [...filteredStudents].reverse();
+  const slicedData = reversedData.slice(startIndex, endIndex);
+
+  if (startIndex === 0 && endIndex >= filteredStudents.length && filteredStudents.length > 0) {
+    const lastAddedIndex = students.findIndex(
+      (student) => student.name === filteredStudents[filteredStudents.length - 1].name
+    );
+    if (lastAddedIndex !== -1) {
+      slicedData.unshift(students[lastAddedIndex]);
+    }
+  }
+
+  return slicedData.map((student, index) => (
+    <MemberTableRow student={student} key={index} />
+  ));
+};
+
+  
+  
+  
+  
+  
 
   useEffect(() => {
     axios
@@ -139,52 +134,28 @@ doc.text("Cheque Payment Report", 10, 10);
         <Form className="d-flex">
           <Form.Control
             type="search"
-            placeholder="Search by Company Name"
+            placeholder="Search by Company Name and Cheque Number"
             className="me-2"
             aria-label="Search by Company Name"
             onChange={handleSearch}
             spellCheck={false}
           />
-          
         </Form>
         <br />
         <br />
         <Table striped bordered hover size="sm" id="pdf">
           <thead>
             <tr>
-              <th onClick={() => handleSort("name")}>
-                Payment/Transfer to
-                {sortColumn === "name" && <span>{sortDirection === "asc" ? "▲" : "▼"}</span>}
-              </th>
-              <th onClick={() => handleSort("chequeNumber")}>
-                Cheque Number
-                {sortColumn === "chequeNumber" && <span>{sortDirection === "asc" ? "▲" : "▼"}</span>}
-              </th>
-              <th onClick={() => handleSort("chequeAmount")}>
-                Cheque Amount
-                {sortColumn === "chequeAmount" && <span>{sortDirection === "asc" ? "▲" : "▼"}</span>}
-              </th>
-              <th onClick={() => handleSort("date")}>
-                Date
-                {sortColumn === "date" && <span>{sortDirection === "asc" ? "▲" : "▼"}</span>}
-              </th>
-              <th onClick={() => handleSort("bank")}>
-                Bank
-                {sortColumn === "bank" && <span>{sortDirection === "asc" ? "▲" : "▼"}</span>}
-              </th>
+              <th>Payment/Transfer to</th>
+              <th>Cheque Number</th>
+              <th>Cheque Amount</th>
+              <th>Date</th>
+              <th>Bank</th>
               <th>Edit / Delete</th>
             </tr>
           </thead>
-          <tbody>
-            {filteredStudents
-              .slice(currentPage * pageSize, (currentPage + 1) * pageSize)
-              .map((student, index) => (
-                <MemberTableRow student={student} key={index} />
-              ))}
-          </tbody>
-          
+          <tbody>{renderTableData()}</tbody>
         </Table>
-        
         <ReactPaginate
           previousLabel={"Prev"}
           nextLabel={"Next"}

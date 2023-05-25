@@ -53,11 +53,12 @@ export default class MemberTableRow extends Component {
         <td>{this.dates(this.props.student.date)}</td>
         <td>{this.props.student.duration}</td>
         <td>
-          <Link
+        <Link
             className="edit-link"
             path={"product/:id"}
             to={"/edit-student/" + this.props.student._id}
-            style={{ textDecoration: 'none' }} 
+            style={{ textDecoration: 'none' }}
+            
           >
             Edit
           </Link>
